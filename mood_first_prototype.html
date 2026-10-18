@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Mood-First Entry — Interactive Prototype</title>
+<style>
+  /* Standalone product mockup: Netflix dark theme overrides app vars intentionally */
+  :root{
+    --nf-red:#E50914; --nf-dark:#141414; --nf-panel:#1f1f1f; --nf-card:#262626;
+    --nf-text:#e8e8e8; --nf-muted:#8c8c8c; --nf-line:#3a3a3a;
+  }
+  .proto{max-width:660px;margin:0 auto;padding:18px 14px;font-family:var(--app-font,-apple-system,"Segoe UI",Roboto,sans-serif);color:var(--nf-text)}
+  .topbar{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .nf-logo{color:var(--nf-red);font-weight:800;font-size:15px;letter-spacing:.02em}
+  .step-label{color:var(--nf-muted);font-size:12px}
+  .stats{margin-left:auto;display:flex;gap:14px;font-size:11px;color:var(--nf-muted)}
+  .stats b{color:var(--nf-text)}
+
+  /* Step 1: energy picker */
+  .moods{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+  .mood{background:var(--nf-panel);border:1px solid var(--nf-line);border-radius:10px;padding:14px 12px;cursor:pointer;transition:all .18s ease}
+  .mood:hover{border-color:var(--nf-red);transform:translateY(-2px)}
+  .mood .emoji{font-size:22px}
+  .mood .name{font-weight:700;margin-top:6px;font-size:13px}
+  .mood .hint{color:var(--nf-muted);font-size:11px;margin-top:3px}
+  .mood.selected{background:var(--nf-red);border-color:var(--nf-red);color:#fff}
+
+  /* Step 2: the one answer */
+  .answer{margin-top:14px;background:var(--nf-card);border:1px solid var(--nf-line);border-radius:12px;overflow:hidden}
+  .clip{height:150px;position:relative;background:linear-gradient(120deg,#2b1a12,#141414 40%,#2b1a12);animation:clipmove 6s linear infinite}
+  @keyframes clipmove{0%{background-position:0 0}100%{background-position:400px 0}}
+  .clip .wave{position:absolute;left:12px;bottom:12px;display:flex;gap:3px;align-items:flex-end;height:22px}
+  .clip .wave i{width:4px;background:var(--nf-red);opacity:.7;animation:wv 1.2s ease-in-out infinite}
+  .clip .wave i:nth-child(2){animation-delay:.15s}.clip .wave i:nth-child(3){animation-delay:.3s}
+  .clip .wave i:nth-child(4){animation-delay:.45s}.clip .wave i:nth-child(5){animation-delay:.6s}
+  @keyframes wv{0%,100%{height:6px}50%{height:20px}}
+  .clip .tag{position:absolute;top:10px;left:12px;font-size:10px;color:#fff;background:rgba(0,0,0,.55);padding:4px 8px;border-radius:6px}
+  .answer-body{padding:14px}
+  .title{font-size:17px;font-weight:700}
+  .meta{color:var(--nf-muted);font-size:12px;margin-top:4px}
+  .why{font-size:12px;color:var(--nf-muted);margin-top:6px}
+  .match{display:inline-block;background:var(--nf-red);color:#fff;font-size:11px;font-weight:700;padding:4px 9px;border-radius:6px;margin-top:8px}
+  .actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .btn{border:1px solid var(--nf-line);background:var(--nf-panel);color:var(--nf-text);border-radius:8px;padding:9px 14px;font-size:12px;cursor:pointer;font-weight:600}
+  .btn:hover{border-color:var(--nf-red)}
+  .btn.primary{background:var(--nf-red);border-color:var(--nf-red);color:#fff}
+  .btn.ghost{background:transparent}
+
+  /* Step 3: friends escalation */
+  .friends{margin-top:14px;background:var(--nf-card);border:1px solid var(--nf-line);border-radius:12px;padding:14px}
+  .friends h3{margin:0 0 8px;font-size:13px}
+  .friend{display:flex;align-items:center;gap:10px;margin-top:8px}
+  .avatar{width:34px;height:34px;border-radius:50%;background:var(--nf-panel);border:1px solid var(--nf-line);display:flex;align-items:center;justify-content:center;font-size:14px}
+  .friend .fname{font-size:12px;font-weight:600}
+  .friend .fstat{font-size:11px;color:var(--nf-muted)}
+  .yesbtn{margin-left:auto;border:1px solid var(--nf-line);background:var(--nf-panel);color:var(--nf-text);border-radius:6px;padding:6px 10px;font-size:11px;cursor:pointer}
+  .yesbtn:hover{border-color:var(--nf-red)}
+
+  /* Outcome */
+  .outcome{margin-top:14px;background:var(--nf-card);border:1px solid var(--nf-line);border-radius:12px;padding:16px}
+  .outcome .big{font-size:16px;font-weight:700}
+  .outcome .sub{color:var(--nf-muted);font-size:12px;margin-top:6px}
+  .timer{font-size:11px;color:var(--nf-muted);margin-top:10px}
+  .reset{margin-top:12px}
+  .footnote{margin-top:14px;font-size:10px;color:var(--nf-muted);line-height:1.5}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div class="proto">
+  <div class="topbar">
+    <span class="nf-logo">NETFLIX</span>
+    <span class="step-label" id="stepLabel">Step 1 · Pick your energy</span>
+    <div class="stats">
+      <span>Starts: <b id="statStarts">0</b></span>
+      <span>Regrets: <b id="statRegrets">0</b></span>
+      <span>Avg time-to-decision: <b id="statTime">—</b></span>
+    </div>
+  </div>
+
+  <!-- STEP 1 -->
+  <div id="step1">
+    <div class="moods">
+      <div class="mood" data-mood="cozy"><div class="emoji">☕</div><div class="name">Cozy</div><div class="hint">warm, low-stakes, familiar</div></div>
+      <div class="mood" data-mood="cry"><div class="emoji">🥲</div><div class="name">Need to cry</div><div class="hint">let it out, emotional</div></div>
+      <div class="mood" data-mood="date"><div class="emoji">🕯️</div><div class="name">Date night</div><div class="hint">two people, romantic</div></div>
+      <div class="mood" data-mood="adventure"><div class="emoji">🎢</div><div class="name">Adventure</div><div class="hint">keep me on the edge</div></div>
+      <div class="mood" data-mood="background"><div class="emoji">🎧</div><div class="name">Background noise</div><div class="hint">half-watching, easy follow</div></div>
+      <div class="mood" data-mood="comfort"><div class="emoji">🫧</div><div class="name">Comfort rewatch</div><div class="hint">something you already loved</div></div>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div id="step2" class="hidden">
+    <div class="answer">
+      <div class="clip">
+        <span class="tag">15-sec clip · auto-preview</span>
+        <div class="wave"><i></i><i></i><i></i><i></i><i></i></div>
+      </div>
+      <div class="answer-body">
+        <div class="title" id="ansTitle"></div>
+        <div class="meta" id="ansMeta"></div>
+        <div class="why" id="ansWhy"></div>
+        <span class="match" id="ansMatch"></span>
+        <div class="actions">
+          <button class="btn primary" id="btnStart">▶ Start watching</button>
+          <button class="btn" id="btnNext">Not this → next pick</button>
+          <button class="btn ghost" id="btnFriends">🤝 Ask 3 friends</button>
+        </div>
+      </div>
+    </div>
+    <div class="timer">Decision clock running: <b id="clock">0.0s</b> since you picked your energy · pick #<b id="pickNum">1</b> of max 3</div>
+  </div>
+
+  <!-- STEP 3: friends -->
+  <div id="step3" class="hidden">
+    <div class="friends">
+      <h3>Would you watch this with your circle?</h3>
+      <div class="friend"><div class="avatar">A</div><div><div class="fname">Adaora</div><div class="fstat">loves cozy + rewatch</div></div><button class="yesbtn" data-friend="Adaora">Yes 👍</button></div>
+      <div class="friend"><div class="avatar">R</div><div><div class="fname">Rui</div><div class="fstat">arrives with a title already</div></div><button class="yesbtn" data-friend="Rui">Yes 👍</button></div>
+      <div class="friend"><div class="avatar">N</div><div><div class="fname">Nenye</div><div class="fstat">pacing-sensitive</div></div><button class="yesbtn" data-friend="Nenye">Yes 👍</button></div>
+      <div class="timer">First "yes" auto-starts the session — word of mouth, on-platform.</div>
+    </div>
+  </div>
+
+  <!-- OUTCOME -->
+  <div id="outcome" class="hidden">
+    <div class="outcome">
+      <div class="big" id="outBig"></div>
+      <div class="sub" id="outSub"></div>
+      <div class="timer" id="outTime"></div>
+    </div>
+    <button class="btn ghost reset" id="btnReset">↺ Try another energy</button>
+  </div>
+
+  <div class="footnote">
+    Interactive prototype for Crazy 8 #3 (mood-first entry), combined with #1 (ask-friends escalation) and #7 (comfort rewatch as success).
+    Titles are illustrative placeholders. Counters mirror the Week 5 OKR guardrails: satisfying-start rate, regret, time-to-decision.
+    This file can be dropped into CodePen/Figma (HTML import) to share as a live link.
+  </div>
+</div>
+
+<script>
+const catalog = {
+  cozy:      [["The Ember Diaries","Drama · 2 seasons","Warm small-town story, slow-burn, 92% match with your 'cozy' history","92%"],
+              ["Bake House Nights","Reality · 1 hr","Low-stakes comfort watch you've rewatched 3 times","88%"],
+              ["Letters from Maple","Drama · movie","A gentle rewatch you rated 5 stars last winter","85%"]],
+  cry:       [["The Long Goodbye","Drama · movie","Ends the way you need it to — you flagged 'emotional' twice this month","90%"],
+              ["Half Light","Drama · limited series","Critics called it 'the cry you didn't plan for'","87%"],
+              ["Riverkeeper","Documentary","Quiet grief, beautiful pacing — matches your late-night viewing pattern","83%"]],
+  date:      [["Midnight Terrace","Romance · movie","Two-person watch, 98-min runtime — fits a date-night window","91%"],
+              ["The Summer We Almost Left","Romance · series","Your partner's watchlist overlaps 64% with yours","86%"],
+              ["Slow Dances","Romance · movie","Rewatch-safe: you both loved this in 2024","84%"]],
+  adventure: [["Signal Fire","Thriller · series","Cliffhanger every 40 min — built for edge-of-seat","93%"],
+              ["The Deep Crossing","Adventure · movie","High pacing, no slow openings (you skip those)","89%"],
+              ["Night Run","Thriller · movie","Short enough to finish tonight","82%"]],
+  background:[["Kitchen Wars","Reality · 22 min","Easy to follow, no plot to lose — perfect half-watch","90%"],
+              ["Car Shop","Reality · series","Low attention cost, familiar faces","86%"],
+              ["Coast Lines","Doc · 30 min","Scenic, no stakes, no commitment","81%"]],
+  comfort:   [["The Ember Diaries (S1)","Drama · rewatch","You missed it 4 times this month — start where you left off","95%"],
+              ["Bake House Nights (S2)","Reality · rewatch","Comfort pick ranked by how much you missed it","91%"],
+              ["Letters from Maple","Drama · rewatch","Your most-replayed title since March","88%"]]
+};
+
+let mood=null, pickIdx=0, t0=null, starts=0, regrets=0, times=[];
+const $=id=>document.getElementById(id);
+
+function show(id){["step1","step2","step3","outcome"].forEach(s=>$(s).classList.toggle("hidden",s!==id));}
+
+document.querySelectorAll(".mood").forEach(el=>{
+  el.addEventListener("click",()=>{
+    mood=el.dataset.mood; pickIdx=0; t0=Date.now();
+    el.classList.add("selected");
+    renderPick(); show("step2");
+    $("stepLabel").textContent="Step 2 · One answer, not a grid";
+  });
+});
+
+function renderPick(){
+  const p=catalog[mood][pickIdx];
+  $("ansTitle").textContent=p[0];
+  $("ansMeta").textContent=p[1];
+  $("ansWhy").textContent=p[2];
+  $("ansMatch").textContent=p[3]+" match";
+  $("pickNum").textContent=pickIdx+1;
+}
+
+$("btnNext").addEventListener("click",()=>{
+  regrets++; $("statRegrets").textContent=regrets;
+  if(pickIdx<2){pickIdx++;renderPick();}
+  else{show("step3");$("stepLabel").textContent="Step 3 · Escalate to friends";}
+});
+
+$("btnFriends").addEventListener("click",()=>{show("step3");$("stepLabel").textContent="Step 3 · Escalate to friends";});
+
+document.querySelectorAll(".yesbtn").forEach(b=>{
+  b.addEventListener("click",()=>{
+    const p=catalog[mood][pickIdx];
+    finish(`▶ Started "${p[0]}" — first friend said yes`, "Word-of-mouth decision, captured on-platform instead of in a group chat.");
+  });
+});
+
+$("btnStart").addEventListener("click",()=>{
+  const p=catalog[mood][pickIdx];
+  finish(`▶ Started "${p[0]}"`, "Satisfying start logged. Time-to-decision recorded against the 40% reduction target.");
+});
+
+function finish(big,sub){
+  const secs=(Date.now()-t0)/1000;
+  starts++; times.push(secs);
+  $("statStarts").textContent=starts;
+  $("statTime").textContent=(times.reduce((a,b)=>a+b,0)/times.length).toFixed(1)+"s";
+  $("outBig").textContent=big;
+  $("outSub").textContent=sub;
+  $("outTime").textContent="Time to decision: "+secs.toFixed(1)+"s (baseline browse: ~4–6 min)";
+  $("stepLabel").textContent="Outcome";
+  show("outcome");
+}
+
+$("btnReset").addEventListener("click",()=>{
+  document.querySelectorAll(".mood").forEach(e=>e.classList.remove("selected"));
+  show("step1"); $("stepLabel").textContent="Step 1 · Pick your energy";
+});
+
+// live decision clock
+setInterval(()=>{
+  if(t0 && !$("step2").classList.contains("hidden")){
+    $("clock").textContent=((Date.now()-t0)/1000).toFixed(1)+"s";
+  }
+},200);
+</script>
+</body>
+</html>
